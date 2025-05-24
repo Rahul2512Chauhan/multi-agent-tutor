@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Agent Tutor Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-gradient-to-tr from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full flex flex-col p-6">
+    <h1 class="text-4xl font-extrabold mb-6 text-center text-indigo-700">Multi-Agent Tutor</h1>
+
+    <!-- Chat container -->
+    <div id="chat" class="flex flex-col space-y-4 mb-6 overflow-y-auto max-h-[60vh] px-4">
+      <!-- Chat bubbles will be appended here -->
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="loading" class="flex justify-center mb-4 hidden">
+      <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle
+          class="opacity-25"
+          cx="12" cy="12" r="10"
+          stroke="currentColor" stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+        ></path>
+      </svg>
+    </div>
+
+    <!-- Input & submit button -->
+    <div class="flex gap-2">
+      <input
+        type="text"
+        id="question"
+        placeholder="Type your question here..."
+        class="flex-grow border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-4 focus:ring-indigo-400 text-lg"
+        onkeydown="if(event.key==='Enter'){submitQuestion()}"
+        aria-label="Ask your question"
+        autocomplete="off"
+      />
+      <button
+        id="submitBtn"
+        onclick="submitQuestion()"
+        class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition"
+      >
+        Send
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const loading = document.getElementById('loading');
+    const questionInput = document.getElementById('question');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Add a chat bubble
+    function addChatBubble(text, sender = 'agent') {
+      const bubble = document.createElement('div');
+      bubble.classList.add('max-w-[80%]', 'p-4', 'rounded-lg', 'prose');
+      if (sender === 'user') {
+        bubble.classList.add('self-end', 'bg-indigo-600', 'text-white', 'rounded-br-none');
+        bubble.textContent = text;
+      } else {
+        bubble.classList.add('self-start', 'bg-gray-100', 'text-gray-900', 'rounded-bl-none');
+        bubble.innerHTML = marked.parse(text);
+      }
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Submit question function
+    async function submitQuestion() {
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      addChatBubble(question, 'user');
+      questionInput.value = '';
+      loading.classList.remove('hidden');
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/ask', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ question }),
+        });
+        if (!res.ok) throw new Error('Network error');
+
+        const data = await res.json();
+        addChatBubble(data.response, 'agent');
+      } catch (err) {
+        addChatBubble('Error: ' + err.message, 'agent');
+      } finally {
+        loading.classList.add('hidden');
+        submitBtn.disabled = false;
+        questionInput.focus();
+      }
+    }
+  </script>
+</body>
+</html>
